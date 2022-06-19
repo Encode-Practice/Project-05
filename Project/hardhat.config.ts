@@ -3,6 +3,7 @@ import * as dotenv from "dotenv";
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
+import fs from 'fs';
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
@@ -19,16 +20,19 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   }
 });
 
+const PRIVATE_KEY = fs.readFileSync(".secret").toString().trim();
+const POLYGON_URL = "https://polygon-mumbai.g.alchemy.com/v2/AYx-GxLNZR0rRe2SZBKyyb866dWPSGfS"
+
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
 const config: HardhatUserConfig = {
   solidity: "0.8.4",
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    hardhat: {},
+    polygon_mumbai: {
+      url: POLYGON_URL,
+      accounts: [PRIVATE_KEY],
     },
   },
   gasReporter: {
