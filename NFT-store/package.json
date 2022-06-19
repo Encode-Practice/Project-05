@@ -1,0 +1,16 @@
+{
+  "name": "nft-store",
+  "version": "1.0.0",
+  "description": "get meta data in NFT-Store",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jack Liu",
+  "license": "ISC",
+  "dependencies": {
+    "mime": "^3.0.0",
+    "nft.storage": "^6.3.0",
+    "node-fetch": "^3.2.6"
+  }
+}
