@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts@4.6.0/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts@4.6.0/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts@4.6.0/access/Ownable.sol";
+import "@openzeppelin/contracts@4.6.0/utils/Counters.sol";
+
+interface vrf {
+    function requestRandomWords() external returns (uint256);
+    function randomNumber(uint256 requestId) external view returns(uint256);
+    function senderAddress() external view returns(address);
+}
 
 contract dNFT is ERC721, ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
@@ -19,13 +25,39 @@ contract dNFT is ERC721, ERC721URIStorage, Ownable {
 
     uint256 internal interval;
     uint256 internal lastTimeStamp;
+    uint256 public requestId;
+    address public vrfGenerator;
 
-    constructor(uint256 _interval) ERC721("dnft", "dnft") {
-        interval = _interval;
+    constructor() ERC721("dnft", "dnft") {
+        interval = 120;
         lastTimeStamp = block.timestamp;
+        requestId = 0;
+        vrfGenerator = 0xec267adccDC192De82E6F78f794aA3A6e800B451;
     }
 
-    function checkUpkeep(bytes calldata /* checkData */) external view returns (bool upkeepNeeded, bytes memory /* performData */) {
+    function destroy() public payable onlyOwner {
+        address payable s = payable(owner());
+        selfdestruct(s);
+    } 
+    
+    function requestRandom() public {
+        requestId = vrf(vrfGenerator).requestRandomWords();
+    }
+
+    function randomNumber() public view returns (uint256){
+        return vrf(vrfGenerator).randomNumber(requestId);
+    }
+
+    function senderAddress() public view returns (address){
+        return vrf(vrfGenerator).senderAddress();
+    }
+
+    function setVrfContract(address contractAddress) external onlyOwner {
+        require( contractAddress != vrfGenerator );
+        vrfGenerator = contractAddress;
+    }
+
+    function checkUpkeep(bytes calldata /* checkData */) external view returns (bool upkeepNeeded /*, bytes memory /* performData */) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
@@ -55,16 +87,20 @@ contract dNFT is ERC721, ERC721URIStorage, Ownable {
         return interval;
     }
 
+    function growRandom(uint256 tokenID) public {
+        uint256 r = randomNumber() % IpfsUri.length;
+        requestId = 0;
+        _setTokenURI(tokenID, IpfsUri[r]);  
+    }
+
     function growFlower(uint256 _tokenId) public {
-        if(flowerStage(_tokenId) >= 2){
+        uint256 currentStage = flowerStage(_tokenId);
+        if(currentStage >= IpfsUri.length){
             _setTokenURI(_tokenId, IpfsUri[0]);           
-        } 
-        // get the current stage of the flower and add 1
-        uint256 newVal = flowerStage(_tokenId) + 1;
-        // store the new URI
-        string memory newUri = IpfsUri[newVal];
-        // update the URI
-        _setTokenURI(_tokenId, newUri);
+        } else {
+            string memory newUri = IpfsUri[currentStage+1];
+            _setTokenURI(_tokenId, newUri);
+        }
     }
 
     // determin the stage of the flower growth
@@ -85,7 +121,7 @@ contract dNFT is ERC721, ERC721URIStorage, Ownable {
         super._burn(tokenId);
     }
 
-    function get_add() public view returns (address) {
+    function thisAddress() public view returns (address) {
         return address(this);
     }
 

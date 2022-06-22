@@ -26,35 +26,38 @@ contract VRFv2Consumer is VRFConsumerBaseV2 {
   // this limit based on the network that you select, the size of the request,
   // and the processing of the callback request in the fulfillRandomWords()
   // function.
-  uint32 callbackGasLimit = 500000;
+  uint32 callbackGasLimit = 100000;
 
   // The default is 3, but you can set this higher.
   uint16 requestConfirmations = 3;
 
   // For this example, retrieve 2 random values in one request.
   // Cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
-//   uint32 numWords =  2;
-
-  uint256[] public s_randomWords;
-  uint256 public s_requestId;
-  address s_owner;
-  bool public NOT_READY;
+  uint32 public numWords = 1;
+  address public s_owner;
+  // map rollers to requestIds
+  mapping(uint256 => address) private rollers;
+  // map vrf results to rollers
+  mapping(address => uint256) private results;
 
   constructor(uint64 subscriptionId) VRFConsumerBaseV2(vrfCoordinator) {
     COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
     s_owner = msg.sender;
     s_subscriptionId = subscriptionId;
-    NOT_READY = true;
     // createNewSubscription();
     //Create a new subscription when you deploy the contract.
     // COORDINATOR.addConsumer(subscriptionId, address(this));
   }
 
-  function getContractAddress() public view returns(address) {
+  function senderAddress() external view returns(address) {
+      return msg.sender;
+  }
+
+  function contractAddress() public view returns(address) {
       return address(this);
   }
 
-  function getOwner() public view returns(address) {
+  function owner() public view returns(address) {
       return s_owner;
   }
 
@@ -63,34 +66,35 @@ contract VRFv2Consumer is VRFConsumerBaseV2 {
   }
 
   function destroy() public payable onlyOwner {
+      //destroy the code
       selfdestruct(payable(s_owner));
   } 
-
-//   function createNewSubscription() public onlyOwner {
-//     // Add this contract as a consumer of its own subscription.
-//     // strangely this won't work
-//     COORDINATOR.addConsumer(s_subscriptionId, address(this));
-//   }
   
   // Assumes the subscription is funded sufficiently.
-  function requestRandomWords(uint32 numWords) external {
+  function requestRandomWords() external returns (uint256) {
     // Will revert if subscription is not set and funded.
-    s_requestId = COORDINATOR.requestRandomWords(
+    uint256 requestId = COORDINATOR.requestRandomWords(
       keyHash,
       s_subscriptionId,
       requestConfirmations,
       callbackGasLimit,
       numWords
     );
-
+    rollers[requestId] = msg.sender;
+    results[msg.sender] = 0;
+    return requestId;
   }
 
   
-  function fulfillRandomWords(
-    uint256, /* requestId */
-    uint256[] memory randomWords
-  ) internal override {
-    s_randomWords = randomWords;
+  function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    results[rollers[requestId]] = randomWords[0];
+  }
+
+  function randomNumber(uint256 requestId) external view returns(uint256) {
+    uint256 ans = results[msg.sender];
+    require(rollers[requestId] == msg.sender, 'Wrong requestId, please reqest random number first');
+    require(ans > 0, 'Random number request still in progress');
+    return ans;
   }
 
   modifier onlyOwner() {
