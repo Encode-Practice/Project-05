@@ -6,6 +6,7 @@ import "@openzeppelin/contracts@4.6.0/token/ERC721/extensions/ERC721URIStorage.s
 import "@openzeppelin/contracts@4.6.0/access/Ownable.sol";
 import "@openzeppelin/contracts@4.6.0/utils/Counters.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/KeeperCompatible.sol";
 
 interface vrf {
     function requestRandomWords() external returns (uint256);
@@ -43,6 +44,7 @@ contract dNFT is ERC721, ERC721URIStorage, Ownable {
         requestId = 0;
         vrfGenerator = 0xec267adccDC192De82E6F78f794aA3A6e800B451;
         keeperTokenID = 0;
+        safeMint(0xAefe9691A3d2e7E7b13F148Ec6E656B491E30E5F);
     }
 
     function destroy() public payable onlyOwner {
@@ -69,12 +71,14 @@ contract dNFT is ERC721, ERC721URIStorage, Ownable {
     }
 
     // @notice used by Chainlink to see if upkeep needs to be performed
-    function checkUpkeep(bytes calldata /* checkData */) external view returns (bool upkeepNeeded /*, bytes memory /* performData */) {
+    function checkUpkeep(bytes calldata /*checkData*/) external view 
+        returns (bool upkeepNeeded, bytes memory performData) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+        performData = bytes("");
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
 
-    function performUpkeep(bytes calldata /* performData */) external {
+    function performUpkeep(bytes calldata /*performData*/) external {
         //We highly recommend revalidating the upkeep in the performUpkeep function
         if ((block.timestamp - lastTimeStamp) > interval ) {
             lastTimeStamp = block.timestamp;
